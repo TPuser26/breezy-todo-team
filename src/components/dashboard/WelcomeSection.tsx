@@ -3,14 +3,21 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { Plus, Calendar, Users, BarChart3 } from 'lucide-react'
+import { useTasks } from '@/hooks/useTasks'
 
 export function WelcomeSection() {
   const { profile } = useAuth()
+  const { tasks } = useTasks()
+
+  // Calculer les statistiques des tâches
+  const activeTasks = tasks.filter(task => task.status !== 'completed').length
+  const completedTasks = tasks.filter(task => task.status === 'completed').length
+  const inProgressTasks = tasks.filter(task => task.status === 'in_progress').length
 
   const stats = [
-    { label: 'Tâches actives', value: '12', icon: Calendar, color: 'text-blue-600' },
-    { label: 'Équipes', value: '3', icon: Users, color: 'text-green-600' },
-    { label: 'Complétées', value: '48', icon: BarChart3, color: 'text-purple-600' },
+    { label: 'Tâches actives', value: activeTasks.toString(), icon: Calendar, color: 'text-blue-600' },
+    { label: 'En cours', value: inProgressTasks.toString(), icon: Users, color: 'text-orange-600' },
+    { label: 'Complétées', value: completedTasks.toString(), icon: BarChart3, color: 'text-green-600' },
   ]
 
   return (
@@ -64,11 +71,11 @@ export function WelcomeSection() {
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Actions rapides</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { title: 'Créer un projet', desc: 'Nouveau projet collaboratif', color: 'bg-blue-500' },
-              { title: 'Inviter équipe', desc: 'Ajouter des collaborateurs', color: 'bg-green-500' },
-              { title: 'Voir rapports', desc: 'Analytics et métriques', color: 'bg-purple-500' },
-              { title: 'Paramètres', desc: 'Configuration du compte', color: 'bg-orange-500' },
-            ].map((action, index) => (
+              { title: 'Créer une tâche', desc: 'Nouvelle tâche à faire', color: 'bg-blue-500' },
+              { title: 'Voir toutes les tâches', desc: 'Liste complète des tâches', color: 'bg-green-500' },
+              { title: 'Tâches urgentes', desc: 'Priorité élevée', color: 'bg-red-500' },
+              { title: 'Statistiques', desc: 'Analyse des performances', color: 'bg-purple-500' },
+            ].map((action, index)    => (
               <Button
                 key={index}
                 variant="outline"
