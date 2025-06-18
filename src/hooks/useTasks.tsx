@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { Task, TaskInsert, TaskUpdate } from '@/types/database'
 import { useAuth } from '@/hooks/useAuth'
@@ -10,15 +10,11 @@ export function useTasks() {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
 
-  // Memoize the fetch function to prevent unnecessary re-renders
-  const fetchTasks = useCallback(async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
+  // Récupérer les tâches initiales
+  const fetchTasks = async () => {
+    if (!user) return
 
     try {
-      console.log('Fetching tasks for user:', user.id)
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
@@ -26,7 +22,6 @@ export function useTasks() {
 
       if (error) throw error
       setTasks(data || [])
-      console.log('Tasks loaded:', data?.length || 0)
     } catch (error) {
       console.error('Erreur lors de la récupération des tâches:', error)
       toast({
@@ -37,14 +32,13 @@ export function useTasks() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }
 
-  // Memoize CRUD operations
-  const createTask = useCallback(async (taskData: Omit<TaskInsert, 'user_id'>) => {
+  // Créer une tâche
+  const createTask = async (taskData: Omit<TaskInsert, 'user_id'>) => {
     if (!user) return
 
     try {
-      console.log('Creating task:', taskData.title)
       const { error } = await supabase
         .from('tasks')
         .insert({
@@ -66,11 +60,11 @@ export function useTasks() {
         variant: "destructive",
       })
     }
-  }, [user])
+  }
 
-  const updateTask = useCallback(async (id: string, updates: TaskUpdate) => {
+  // Mettre à jour une tâche
+  const updateTask = async (id: string, updates: TaskUpdate) => {
     try {
-      console.log('Updating task:', id, updates)
       const { error } = await supabase
         .from('tasks')
         .update(updates)
@@ -90,11 +84,11 @@ export function useTasks() {
         variant: "destructive",
       })
     }
-  }, [])
+  }
 
-  const deleteTask = useCallback(async (id: string) => {
+  // Supprimer une tâche
+  const deleteTask = async (id: string) => {
     try {
-      console.log('Deleting task:', id)
       const { error } = await supabase
         .from('tasks')
         .delete()
@@ -114,15 +108,15 @@ export function useTasks() {
         variant: "destructive",
       })
     }
-  }, [])
+  }
 
-  // Set up real-time subscriptions only once
+  // Configurer les abonnements en temps réel
   useEffect(() => {
     if (!user) return
 
-    console.log('Setting up real-time subscriptions for user:', user.id)
     fetchTasks()
 
+    // Abonnement aux changements en temps réel
     const channel = supabase
       .channel('tasks-changes')
       .on(
@@ -134,8 +128,12 @@ export function useTasks() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time: Task inserted', payload.new)
+          console.log('Nouvelle tâche ajoutée:', payload.new)
           setTasks((current) => [payload.new as Task, ...current])
+          toast({
+            title: "Nouvelle tâche",
+            description: `"${(payload.new as Task).title}" a été ajoutée`,
+          })
         }
       )
       .on(
@@ -147,12 +145,16 @@ export function useTasks() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time: Task updated', payload.new)
+          console.log('Tâche mise à jour:', payload.new)
           setTasks((current) =>
             current.map((task) =>
               task.id === payload.new.id ? (payload.new as Task) : task
             )
           )
+          toast({
+            title: "Tâche mise à jour",
+            description: `"${(payload.new as Task).title}" a été modifiée`,
+          })
         }
       )
       .on(
@@ -164,26 +166,28 @@ export function useTasks() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('Real-time: Task deleted', payload.old)
+          console.log('Tâche supprimée:', payload.old)
           setTasks((current) =>
             current.filter((task) => task.id !== payload.old.id)
           )
+          toast({
+            title: "Tâche supprimée",
+            description: `"${(payload.old as Task).title}" a été supprimée`,
+          })
         }
       )
       .subscribe()
 
     return () => {
-      console.log('Cleaning up real-time subscriptions')
       supabase.removeChannel(channel)
     }
-  }, [user, fetchTasks])
+  }, [user])
 
-  // Memoize the return value to prevent unnecessary re-renders
-  return useMemo(() => ({
+  return {
     tasks,
     loading,
     createTask,
     updateTask,
     deleteTask,
-  }), [tasks, loading, createTask, updateTask, deleteTask])
+  }
 }

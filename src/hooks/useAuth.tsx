@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+
+import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { Profile } from '@/types/database'
@@ -23,62 +24,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
-
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchProfile(session.user.id)
-      } else {
-        setLoading(false)
       }
+      setLoading(false)
     })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        if (!mounted) return
-        
         setSession(session)
         setUser(session?.user ?? null)
         if (session?.user) {
           await fetchProfile(session.user.id)
         } else {
           setProfile(null)
-          setLoading(false)
         }
+        setLoading(false)
       }
     )
 
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Simplified profile handling - just use user data directly
-      const { data: userData } = await supabase.auth.getUser()
-      if (userData.user) {
-        const userProfile = {
-          id: userData.user.id,
-          email: userData.user.email,
-          full_name: userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || null,
-          avatar_url: userData.user.user_metadata?.avatar_url || null,
-          created_at: userData.user.created_at || new Date().toISOString(),
-          updated_at: userData.user.updated_at || new Date().toISOString(),
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error && error.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        const { data: userData } = await supabase.auth.getUser()
+        if (userData.user) {
+          const newProfile = {
+            id: userData.user.id,
+            email: userData.user.email,
+            full_name: userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || null,
+            avatar_url: userData.user.user_metadata?.avatar_url || null,
+          }
+          
+          const { data: createdProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert(newProfile)
+            .select()
+            .single()
+
+          if (!createError) {
+            setProfile(createdProfile)
+          }
         }
-        setProfile(userProfile as Profile)
+      } else if (data) {
+        setProfile(data)
       }
     } catch (error) {
       console.error('Error fetching profile:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
