@@ -2,7 +2,14 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { insertUserSchema, loginSchema, type User } from "@shared/schema";
+import { 
+  insertUserSchema, 
+  loginSchema, 
+  insertTaskSchema, 
+  insertTeamSchema, 
+  updateUserSchema,
+  type User 
+} from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication middleware
@@ -93,6 +100,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { password: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update user profile
+  app.put("/api/auth/profile", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const updates = updateUserSchema.parse(req.body);
+      const user = await storage.updateUser(req.session.userId!, updates);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid input" });
+    }
+  });
+
+  // Get user stats
+  app.get("/api/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const [activeTasksCount, completedTasksCount, teamCount] = await Promise.all([
+        storage.getUserActiveTasksCount(userId),
+        storage.getUserCompletedTasksCount(userId),
+        storage.getUserTeamCount(userId)
+      ]);
+
+      res.json({
+        activeTasksCount,
+        completedTasksCount,
+        teamCount
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Task routes
+  app.post("/api/tasks", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskData = insertTaskSchema.parse(req.body);
+      const task = await storage.createTask({
+        ...taskData,
+        created_by: req.session.userId!
+      });
+      res.json({ task });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid input" });
+    }
+  });
+
+  app.get("/api/tasks", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const tasks = await storage.getTasks(req.session.userId!);
+      res.json({ tasks });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/tasks/:id/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const { status } = req.body;
+      
+      if (!['todo', 'in_progress', 'completed'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const task = await storage.updateTaskStatus(taskId, status);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      res.json({ task });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const success = await storage.deleteTask(taskId);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Team routes
+  app.post("/api/teams", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamData = insertTeamSchema.parse(req.body);
+      const team = await storage.createTeam({
+        ...teamData,
+        created_by: req.session.userId!
+      });
+      res.json({ team });
+    } catch (error) {
+      res.status(400).json({ error: "Invalid input" });
+    }
+  });
+
+  app.get("/api/teams", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teams = await storage.getUserTeams(req.session.userId!);
+      res.json({ teams });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

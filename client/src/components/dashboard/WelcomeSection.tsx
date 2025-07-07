@@ -3,14 +3,45 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { Plus, Calendar, Users, BarChart3 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 
 export function WelcomeSection() {
   const { user } = useAuth()
+  const [showCreateTask, setShowCreateTask] = useState(false)
 
-  const stats = [
-    { label: 'Tâches actives', value: '12', icon: Calendar, color: 'text-blue-600' },
-    { label: 'Équipes', value: '3', icon: Users, color: 'text-green-600' },
-    { label: 'Complétées', value: '48', icon: BarChart3, color: 'text-purple-600' },
+  // Fetch user stats
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['/api/stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/stats', {
+        credentials: 'include'
+      })
+      if (!response.ok) throw new Error('Failed to fetch stats')
+      return response.json()
+    }
+  })
+
+  const statsCards = [
+    { 
+      label: 'Tâches actives', 
+      value: isLoading ? '...' : (stats?.activeTasksCount || 0).toString(), 
+      icon: Calendar, 
+      color: 'text-blue-600' 
+    },
+    { 
+      label: 'Équipes', 
+      value: isLoading ? '...' : (stats?.teamCount || 0).toString(), 
+      icon: Users, 
+      color: 'text-green-600' 
+    },
+    { 
+      label: 'Complétées', 
+      value: isLoading ? '...' : (stats?.completedTasksCount || 0).toString(), 
+      icon: BarChart3, 
+      color: 'text-purple-600' 
+    },
   ]
 
   return (
@@ -27,6 +58,7 @@ export function WelcomeSection() {
             </p>
           </div>
           <Button 
+            onClick={() => setShowCreateTask(true)}
             className="bg-white text-blue-600 hover:bg-blue-50 font-semibold px-6 py-3 h-auto"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -37,7 +69,7 @@ export function WelcomeSection() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat, index) => (
+        {statsCards.map((stat, index) => (
           <Card key={index} className="hover:shadow-lg transition-all duration-300 hover:scale-105 border-0 shadow-md">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -84,6 +116,11 @@ export function WelcomeSection() {
           </div>
         </CardContent>
       </Card>
+
+      <CreateTaskModal 
+        open={showCreateTask} 
+        onOpenChange={setShowCreateTask}
+      />
     </div>
   )
 }

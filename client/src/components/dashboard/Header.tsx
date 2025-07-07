@@ -10,11 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/useAuth'
-import { LogOut, Settings, User, Bell } from 'lucide-react'
+import { LogOut, Settings, User, Bell, Home, CheckSquare } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Link, useLocation } from 'wouter'
 
 export function Header() {
   const { user, signOut } = useAuth()
+  const [location] = useLocation()
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U'
@@ -26,21 +28,51 @@ export function Header() {
       .slice(0, 2)
   }
 
+  const isActive = (path: string) => location === path
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="container flex h-16 items-center justify-between px-6">
         <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl">
-              <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
-                <div className="w-3 h-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded"></div>
+            <Link href="/">
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl cursor-pointer">
+                <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center">
+                  <div className="w-3 h-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded"></div>
+                </div>
               </div>
-            </div>
+            </Link>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">TaskFlow</h1>
+              <Link href="/">
+                <h1 className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors">TaskFlow</h1>
+              </Link>
               <p className="text-xs text-gray-500">Gestion collaborative</p>
             </div>
           </div>
+          
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center space-x-1">
+            <Link href="/">
+              <Button 
+                variant={isActive('/') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Accueil
+              </Button>
+            </Link>
+            <Link href="/tasks">
+              <Button 
+                variant={isActive('/tasks') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <CheckSquare className="w-4 h-4" />
+                Tâches
+              </Button>
+            </Link>
+          </nav>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -88,10 +120,12 @@ export function Header() {
                 <User className="mr-2 h-4 w-4" />
                 <span>Profil</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Paramètres</span>
-              </DropdownMenuItem>
+              <Link href="/settings">
+                <DropdownMenuItem className="cursor-pointer">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Paramètres</span>
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="cursor-pointer text-red-600 focus:text-red-600"
