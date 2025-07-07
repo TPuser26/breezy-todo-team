@@ -68,6 +68,31 @@ export class MemStorage implements IStorage {
     this.currentTeamId = 1;
     this.currentTeamMemberId = 1;
     this.currentNotificationId = 1;
+    
+    // Create a test user for debugging
+    this.createTestUser();
+  }
+
+  private async createTestUser() {
+    try {
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      
+      const testUser: User = {
+        id: this.currentUserId++,
+        email: 'test@example.com',
+        password: hashedPassword,
+        full_name: 'Utilisateur Test',
+        avatar_url: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      
+      this.users.set(testUser.id, testUser);
+      console.log('Test user created: test@example.com / password123');
+    } catch (error) {
+      console.error('Failed to create test user:', error);
+    }
   }
 
   // User methods

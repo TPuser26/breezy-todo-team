@@ -69,6 +69,13 @@ export function AuthForm() {
                   : 'Créez votre compte pour commencer'
                 }
               </CardDescription>
+              {isLogin && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+                  <p className="text-xs text-blue-700 font-medium mb-1">Compte de test disponible :</p>
+                  <p className="text-xs text-blue-600">📧 test@example.com</p>
+                  <p className="text-xs text-blue-600">🔑 password123</p>
+                </div>
+              )}
             </div>
           </CardHeader>
           

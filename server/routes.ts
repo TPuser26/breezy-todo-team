@@ -55,28 +55,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Login endpoint
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { email, password } = loginSchema.parse(req.body);
+      console.log("Login attempt:", { email: req.body?.email, hasPassword: !!req.body?.password });
+      
+      const validationResult = loginSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        console.log("Validation failed:", validationResult.error.errors);
+        return res.status(400).json({ 
+          error: "Invalid input", 
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const { email, password } = validationResult.data;
       
       // Find user
       const user = await storage.getUserByEmail(email);
       if (!user) {
+        console.log("User not found for email:", email);
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      console.log("User found, checking password...");
+      
       // Check password
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
+        console.log("Invalid password for user:", email);
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
+      console.log("Password valid, setting session...");
+      
       // Set session
       req.session.userId = user.id;
+      
+      console.log("Login successful for user:", email);
       
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
     } catch (error) {
-      res.status(400).json({ error: "Invalid input" });
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 
