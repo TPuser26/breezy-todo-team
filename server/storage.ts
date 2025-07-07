@@ -1,9 +1,10 @@
 import { 
-  users, teams, tasks, teamMembers,
+  users, teams, tasks, teamMembers, notifications,
   type User, type InsertUser, type UpdateUser,
   type Team, type InsertTeam,
   type Task, type InsertTask,
-  type TeamMember
+  type TeamMember,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 
 // modify the interface with any CRUD methods
@@ -35,6 +36,13 @@ export interface IStorage {
   // Stats methods
   getUserCompletedTasksCount(userId: number): Promise<number>;
   getUserActiveTasksCount(userId: number): Promise<number>;
+  
+  // Notification methods
+  createNotification(notification: InsertNotification & { user_id: number }): Promise<Notification>;
+  getUserNotifications(userId: number, limit?: number): Promise<Notification[]>;
+  markNotificationAsRead(id: number): Promise<boolean>;
+  getUnreadNotificationCount(userId: number): Promise<number>;
+  deleteNotification(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -42,20 +50,24 @@ export class MemStorage implements IStorage {
   private tasks: Map<number, Task>;
   private teams: Map<number, Team>;
   private teamMembers: Map<number, TeamMember>;
+  private notifications: Map<number, Notification>;
   private currentUserId: number;
   private currentTaskId: number;
   private currentTeamId: number;
   private currentTeamMemberId: number;
+  private currentNotificationId: number;
 
   constructor() {
     this.users = new Map();
     this.tasks = new Map();
     this.teams = new Map();
     this.teamMembers = new Map();
+    this.notifications = new Map();
     this.currentUserId = 1;
     this.currentTaskId = 1;
     this.currentTeamId = 1;
     this.currentTeamMemberId = 1;
+    this.currentNotificationId = 1;
   }
 
   // User methods
@@ -210,6 +222,54 @@ export class MemStorage implements IStorage {
         (task.created_by === userId || task.assigned_to === userId) && 
         task.status !== 'completed'
       ).length;
+  }
+
+  // Notification methods
+  async createNotification(notification: InsertNotification & { user_id: number }): Promise<Notification> {
+    const newNotification: Notification = {
+      id: this.currentNotificationId++,
+      user_id: notification.user_id,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type || 'info',
+      is_read: false,
+      related_task_id: notification.related_task_id || null,
+      related_team_id: notification.related_team_id || null,
+      created_at: new Date(),
+    };
+    
+    this.notifications.set(newNotification.id, newNotification);
+    return newNotification;
+  }
+
+  async getUserNotifications(userId: number, limit: number = 20): Promise<Notification[]> {
+    return Array.from(this.notifications.values())
+      .filter(notification => notification.user_id === userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, limit);
+  }
+
+  async markNotificationAsRead(id: number): Promise<boolean> {
+    const notification = this.notifications.get(id);
+    if (!notification) return false;
+    
+    const updatedNotification: Notification = {
+      ...notification,
+      is_read: true,
+    };
+    
+    this.notifications.set(id, updatedNotification);
+    return true;
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    return Array.from(this.notifications.values())
+      .filter(notification => notification.user_id === userId && !notification.is_read)
+      .length;
+  }
+
+  async deleteNotification(id: number): Promise<boolean> {
+    return this.notifications.delete(id);
   }
 }
 

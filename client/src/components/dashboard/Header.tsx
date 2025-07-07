@@ -10,9 +10,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/useAuth'
-import { LogOut, Settings, User, Bell, Home, CheckSquare } from 'lucide-react'
+import { LogOut, Settings, User, Bell, Home, CheckSquare, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Link, useLocation } from 'wouter'
+import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 
 export function Header() {
   const { user, signOut } = useAuth()
@@ -72,16 +73,21 @@ export function Header() {
                 Tâches
               </Button>
             </Link>
+            <Link href="/teams">
+              <Button 
+                variant={isActive('/teams') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Équipes
+              </Button>
+            </Link>
           </nav>
         </div>
 
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-              3
-            </Badge>
-          </Button>
+          <NotificationPanel />
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

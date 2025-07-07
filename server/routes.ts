@@ -150,6 +150,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...taskData,
         created_by: req.session.userId!
       });
+      
+      // Create notification for task creation
+      await storage.createNotification({
+        user_id: req.session.userId!,
+        title: "Tâche créée",
+        message: `Vous avez créé une nouvelle tâche : "${task.title}"`,
+        type: "success",
+        related_task_id: task.id,
+      });
+      
+      // If task is assigned to someone else, notify them
+      if (task.assigned_to && task.assigned_to !== req.session.userId!) {
+        await storage.createNotification({
+          user_id: task.assigned_to,
+          title: "Nouvelle tâche assignée",
+          message: `Une nouvelle tâche vous a été assignée : "${task.title}"`,
+          type: "info",
+          related_task_id: task.id,
+        });
+      }
+      
       res.json({ task });
     } catch (error) {
       res.status(400).json({ error: "Invalid input" });
@@ -218,6 +239,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const teams = await storage.getUserTeams(req.session.userId!);
       res.json({ teams });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Notification routes
+  app.get("/api/notifications", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req.session as any).userId;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const notifications = await storage.getUserNotifications(userId, limit);
+      res.json({ notifications });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = (req.session as any).userId;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/notifications/:id/read", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.markNotificationAsRead(id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Notification not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteNotification(id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: "Notification not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Team member routes
+  app.post("/api/teams/:teamId/members", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const { userId, role } = req.body;
+      
+      const member = await storage.addTeamMember(teamId, userId, role);
+      
+      // Create notification for the new team member
+      await storage.createNotification({
+        user_id: userId,
+        title: "Ajouté à une équipe",
+        message: "Vous avez été ajouté à une nouvelle équipe",
+        type: "info",
+        related_team_id: teamId,
+      });
+      
+      res.json({ member });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/teams/:teamId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const team = await storage.getTeamById(teamId);
+      
+      if (!team) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+      
+      res.json({ team });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

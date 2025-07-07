@@ -44,6 +44,18 @@ export const tasks = pgTable("tasks", {
   updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("info"), // info, success, warning, error
+  is_read: boolean("is_read").default(false).notNull(),
+  related_task_id: integer("related_task_id").references(() => tasks.id),
+  related_team_id: integer("related_team_id").references(() => teams.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -88,3 +100,14 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type TeamMember = typeof teamMembers.$inferSelect;
 
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+
+export const insertNotificationSchema = createInsertSchema(notifications).pick({
+  title: true,
+  message: true,
+  type: true,
+  related_task_id: true,
+  related_team_id: true,
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

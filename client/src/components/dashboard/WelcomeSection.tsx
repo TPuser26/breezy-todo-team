@@ -6,6 +6,7 @@ import { Plus, Calendar, Users, BarChart3 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
+import { Link } from 'wouter'
 
 export function WelcomeSection() {
   const { user } = useAuth()
@@ -95,24 +96,56 @@ export function WelcomeSection() {
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Actions rapides</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { title: 'Créer un projet', desc: 'Nouveau projet collaboratif', color: 'bg-blue-500' },
-              { title: 'Inviter équipe', desc: 'Ajouter des collaborateurs', color: 'bg-green-500' },
-              { title: 'Voir rapports', desc: 'Analytics et métriques', color: 'bg-purple-500' },
-              { title: 'Paramètres', desc: 'Configuration du compte', color: 'bg-orange-500' },
-            ].map((action, index) => (
+            <Button
+              variant="outline"
+              className="h-auto p-4 flex flex-col items-start space-y-2 hover:shadow-md transition-all duration-200"
+              onClick={() => setShowCreateTask(true)}
+            >
+              <div className="w-8 h-8 bg-blue-500 rounded-lg mb-2"></div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-900">Créer une tâche</p>
+                <p className="text-xs text-gray-500">Nouvelle tâche collaborative</p>
+              </div>
+            </Button>
+            
+            <Link href="/teams">
               <Button
-                key={index}
                 variant="outline"
-                className="h-auto p-4 flex flex-col items-start space-y-2 hover:shadow-md transition-all duration-200"
+                className="h-auto p-4 flex flex-col items-start space-y-2 hover:shadow-md transition-all duration-200 w-full"
               >
-                <div className={`w-8 h-8 ${action.color} rounded-lg mb-2`}></div>
+                <div className="w-8 h-8 bg-green-500 rounded-lg mb-2"></div>
                 <div className="text-left">
-                  <p className="font-semibold text-gray-900">{action.title}</p>
-                  <p className="text-xs text-gray-500">{action.desc}</p>
+                  <p className="font-semibold text-gray-900">Gérer équipes</p>
+                  <p className="text-xs text-gray-500">Ajouter des collaborateurs</p>
                 </div>
               </Button>
-            ))}
+            </Link>
+            
+            <Link href="/tasks">
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-start space-y-2 hover:shadow-md transition-all duration-200 w-full"
+              >
+                <div className="w-8 h-8 bg-purple-500 rounded-lg mb-2"></div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Voir tâches</p>
+                  <p className="text-xs text-gray-500">Analytics et métriques</p>
+                </div>
+              </Button>
+            </Link>
+            
+            <Link href="/settings">
+              <Button
+                variant="outline"
+                className="h-auto p-4 flex flex-col items-start space-y-2 hover:shadow-md transition-all duration-200 w-full"
+              >
+                <div className="w-8 h-8 bg-orange-500 rounded-lg mb-2"></div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-900">Paramètres</p>
+                  <p className="text-xs text-gray-500">Configuration du compte</p>
+                </div>
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

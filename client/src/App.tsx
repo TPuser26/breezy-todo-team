@@ -7,6 +7,7 @@ import { Route, Switch } from "wouter";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Tasks from "./pages/Tasks";
+import Teams from "./pages/Teams";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -21,6 +22,7 @@ const App = () => (
         <Switch>
           <Route path="/" component={Index} />
           <Route path="/tasks" component={Tasks} />
+          <Route path="/teams" component={Teams} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
