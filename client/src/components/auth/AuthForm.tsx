@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/use-toast'
-import { Mail, Lock, User, Chrome } from 'lucide-react'
+import { Mail, Lock, User } from 'lucide-react'
 
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true)
@@ -15,7 +15,7 @@ export function AuthForm() {
   const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth()
+  const { signInWithEmail, signUpWithEmail } = useAuth()
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +33,7 @@ export function AuthForm() {
         await signUpWithEmail(email, password, fullName)
         toast({
           title: "Inscription réussie",
-          description: "Vérifiez votre email pour confirmer votre compte.",
+          description: "Votre compte a été créé avec succès !",
         })
       }
     } catch (error: any) {
@@ -47,17 +47,7 @@ export function AuthForm() {
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle()
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de la connexion Google",
-        variant: "destructive",
-      })
-    }
-  }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4">
@@ -83,24 +73,6 @@ export function AuthForm() {
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <Button
-              onClick={handleGoogleSignIn}
-              variant="outline"
-              className="w-full h-12 border-gray-200 hover:bg-gray-50 transition-all duration-200"
-            >
-              <Chrome className="w-5 h-5 mr-3 text-red-500" />
-              Continuer avec Google
-            </Button>
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-3 text-gray-500">ou</span>
-              </div>
-            </div>
-            
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">

@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Plus, Calendar, Users, BarChart3 } from 'lucide-react'
 
 export function WelcomeSection() {
-  const { profile } = useAuth()
+  const { user } = useAuth()
 
   const stats = [
     { label: 'Tâches actives', value: '12', icon: Calendar, color: 'text-blue-600' },
@@ -20,7 +20,7 @@ export function WelcomeSection() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-2">
-              Bonjour {profile?.full_name?.split(' ')[0] || 'Utilisateur'} ! 👋
+              Bonjour {user?.full_name?.split(' ')[0] || 'Utilisateur'} ! 👋
             </h2>
             <p className="text-blue-100 text-lg">
               Voici un aperçu de vos projets et tâches du jour.

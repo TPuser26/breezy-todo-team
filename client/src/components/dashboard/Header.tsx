@@ -14,7 +14,7 @@ import { LogOut, Settings, User, Bell } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export function Header() {
-  const { profile, signOut } = useAuth()
+  const { user, signOut } = useAuth()
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U'
@@ -55,9 +55,9 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10 border-2 border-blue-100">
-                  <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || ''} />
+                  <AvatarImage src={user?.avatar_url || ''} alt={user?.full_name || ''} />
                   <AvatarFallback className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold">
-                    {getInitials(profile?.full_name)}
+                    {getInitials(user?.full_name)}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -67,17 +67,17 @@ export function Header() {
                 <div className="flex flex-col space-y-2 p-2">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || ''} />
+                      <AvatarImage src={user?.avatar_url || ''} alt={user?.full_name || ''} />
                       <AvatarFallback className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                        {getInitials(profile?.full_name)}
+                        {getInitials(user?.full_name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                       <p className="text-sm font-medium leading-none text-gray-900">
-                        {profile?.full_name || 'Utilisateur'}
+                        {user?.full_name || 'Utilisateur'}
                       </p>
                       <p className="text-xs leading-none text-gray-500 mt-1">
-                        {profile?.email}
+                        {user?.email}
                       </p>
                     </div>
                   </div>
