@@ -564,6 +564,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comments routes
+  app.get("/api/tasks/:taskId/comments", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const task = await storage.getTaskById(taskId);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+      // Optionnel: vérifier que l'utilisateur est membre de l'équipe si la tâche est liée à une équipe
+      if (task.team_id) {
+        const isMember = await storage.isTeamMember(task.team_id, req.session.userId!);
+        if (!isMember) return res.status(403).json({ error: "Access denied" });
+      }
+      const comments = await storage.getCommentsForTask(taskId);
+      res.json({ comments });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tasks/:taskId/comments", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.taskId);
+      const task = await storage.getTaskById(taskId);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+      if (task.team_id) {
+        const isMember = await storage.isTeamMember(task.team_id, req.session.userId!);
+        if (!isMember) return res.status(403).json({ error: "Access denied" });
+      }
+      const { content } = req.body;
+      if (!content || typeof content !== "string" || !content.trim()) {
+        return res.status(400).json({ error: "Le commentaire ne peut pas être vide" });
+      }
+      const comment = await storage.createComment({
+        content: content.trim(),
+        task_id: taskId,
+        user_id: req.session.userId!,
+      });
+      res.status(201).json({ comment });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/comments/:commentId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const commentId = parseInt(req.params.commentId);
+      const success = await storage.deleteComment(commentId, req.session.userId!);
+      if (!success) return res.status(403).json({ error: "Suppression non autorisée ou commentaire introuvable" });
+      res.json({ message: "Commentaire supprimé" });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

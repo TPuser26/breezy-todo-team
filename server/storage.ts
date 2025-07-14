@@ -4,7 +4,8 @@ import {
   type Team, type InsertTeam,
   type Task, type InsertTask,
   type TeamMember,
-  type Notification, type InsertNotification
+  type Notification, type InsertNotification,
+  type Comment, type InsertComment
 } from "@shared/schema";
 
 // modify the interface with any CRUD methods
@@ -53,6 +54,11 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<boolean>;
   getUnreadNotificationCount(userId: number): Promise<number>;
   deleteNotification(id: number): Promise<boolean>;
+
+  // Comment methods
+  createComment(comment: InsertComment & { user_id: number }): Promise<Comment>;
+  getCommentsForTask(taskId: number): Promise<Comment[]>;
+  deleteComment(commentId: number, userId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,11 +67,13 @@ export class MemStorage implements IStorage {
   private teams: Map<number, Team>;
   private teamMembers: Map<number, TeamMember>;
   private notifications: Map<number, Notification>;
+  private comments: Map<number, Comment> = new Map();
   private currentUserId: number;
   private currentTaskId: number;
   private currentTeamId: number;
   private currentTeamMemberId: number;
   private currentNotificationId: number;
+  private currentCommentId: number = 1;
 
   constructor() {
     this.users = new Map();
@@ -406,6 +414,31 @@ export class MemStorage implements IStorage {
 
   async deleteNotification(id: number): Promise<boolean> {
     return this.notifications.delete(id);
+  }
+
+  // Comment methods
+  async createComment(comment: InsertComment & { user_id: number }): Promise<Comment> {
+    const id = this.currentCommentId++;
+    const newComment: Comment = {
+      ...comment,
+      id,
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+    this.comments.set(id, newComment);
+    return newComment;
+  }
+
+  async getCommentsForTask(taskId: number): Promise<Comment[]> {
+    return Array.from(this.comments.values()).filter(c => c.task_id === taskId);
+  }
+
+  async deleteComment(commentId: number, userId: number): Promise<boolean> {
+    const comment = this.comments.get(commentId);
+    if (!comment) return false;
+    // Only author can delete (admin logic could be added)
+    if (comment.user_id !== userId) return false;
+    return this.comments.delete(commentId);
   }
 }
 

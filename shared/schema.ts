@@ -56,6 +56,15 @@ export const notifications = pgTable("notifications", {
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const comments = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  task_id: integer("task_id").notNull().references(() => tasks.id),
+  user_id: integer("user_id").notNull().references(() => users.id),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
@@ -89,6 +98,11 @@ export const loginSchema = z.object({
   password: z.string().min(3, "Le mot de passe doit contenir au moins 3 caractères"),
 });
 
+export const insertCommentSchema = createInsertSchema(comments).pick({
+  content: true,
+  task_id: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -113,3 +127,6 @@ export const insertNotificationSchema = createInsertSchema(notifications).pick({
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;

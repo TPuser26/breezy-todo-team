@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Plus, Calendar, User, Flag, Trash2, CheckCircle, Clock, Circle } from 'lucide-react'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
 import { TaskPrioritySelector } from '@/components/tasks/TaskPrioritySelector'
+import { TaskComments } from '@/components/tasks/TaskComments';
 
 export default function Tasks() {
   const [showCreateTask, setShowCreateTask] = useState(false)
@@ -26,6 +27,16 @@ export default function Tasks() {
       return response.json()
     }
   })
+
+  // Fetch user data
+  const { data: userData } = useQuery({
+    queryKey: ['/api/auth/me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) throw new Error('Utilisateur non connecté');
+      return res.json();
+    }
+  });
 
   // Update task status mutation
   const updateTaskMutation = useMutation({
@@ -266,6 +277,9 @@ export default function Tasks() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {userData?.user?.id && (
+                    <TaskComments taskId={task.id} currentUserId={userData.user.id} />
+                  )}
                 </CardContent>
               </Card>
             ))}
