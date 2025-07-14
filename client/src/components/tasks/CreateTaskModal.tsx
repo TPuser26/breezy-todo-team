@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface CreateTaskModalProps {
   open: boolean
@@ -18,9 +18,37 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('medium')
   const [status, setStatus] = useState('todo')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [teamId, setTeamId] = useState('')
   
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  const { data: usersData } = useQuery({
+    queryKey: ['/api/users'],
+    queryFn: async () => {
+      const response = await fetch('/api/users', {
+        credentials: 'include',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch users')
+      }
+      return response.json()
+    },
+  })
+
+  const { data: teamsData } = useQuery({
+    queryKey: ['/api/teams'],
+    queryFn: async () => {
+      const response = await fetch('/api/teams', {
+        credentials: 'include',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch teams')
+      }
+      return response.json()
+    },
+  })
 
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
@@ -64,6 +92,8 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
     setDescription('')
     setPriority('medium')
     setStatus('todo')
+    setAssignedTo('')
+    setTeamId('')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -81,7 +111,9 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
       title: title.trim(),
       description: description.trim() || null,
       priority,
-      status
+      status,
+      assigned_to: assignedTo ? parseInt(assignedTo) : null,
+      team_id: teamId ? parseInt(teamId) : null,
     })
   }
 
@@ -139,6 +171,42 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                   <SelectItem value="todo">À faire</SelectItem>
                   <SelectItem value="in_progress">En cours</SelectItem>
                   <SelectItem value="completed">Terminée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="assignedTo">Assigner à</Label>
+              <Select value={assignedTo} onValueChange={setAssignedTo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un utilisateur" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucun utilisateur</SelectItem>
+                  {usersData?.users?.map((user: any) => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.full_name || user.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teamId">Équipe</Label>
+              <Select value={teamId} onValueChange={setTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une équipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucune équipe</SelectItem>
+                  {teamsData?.teams?.map((team: any) => (
+                    <SelectItem key={team.id} value={team.id.toString()}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -242,6 +242,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/tasks/:id/priority", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const { priority } = req.body;
+      
+      if (!['low', 'medium', 'high'].includes(priority)) {
+        return res.status(400).json({ error: "Invalid priority" });
+      }
+
+      const task = await storage.updateTaskPriority(taskId, priority);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      res.json({ task });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/tasks/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const taskId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const task = await storage.updateTask(taskId, updates);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      res.json({ task });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.delete("/api/tasks/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const taskId = parseInt(req.params.id);
@@ -275,6 +311,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const teams = await storage.getUserTeams(req.session.userId!);
       res.json({ teams });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/teams/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      const team = await storage.getTeamById(teamId);
+      
+      if (!team) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+
+      // Check if user is a member of this team
+      const isMember = await storage.isTeamMember(teamId, req.session.userId!);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const members = await storage.getTeamMembers(teamId);
+      const tasks = await storage.getTeamTasks(teamId);
+      
+      res.json({ team, members, tasks });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/teams/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      // Check if user is admin of this team
+      const members = await storage.getTeamMembers(teamId);
+      const userMember = members.find(m => m.user_id === req.session.userId!);
+      
+      if (!userMember || userMember.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const team = await storage.updateTeam(teamId, updates);
+      if (!team) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+
+      res.json({ team });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/teams/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      
+      // Check if user is admin of this team
+      const members = await storage.getTeamMembers(teamId);
+      const userMember = members.find(m => m.user_id === req.session.userId!);
+      
+      if (!userMember || userMember.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const success = await storage.deleteTeam(teamId);
+      if (!success) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+
+      res.json({ message: "Team deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/users", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from response
+      const safeUsers = users.map(({ password, ...user }) => user);
+      res.json({ users: safeUsers });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
@@ -353,16 +471,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/teams/:teamId", requireAuth, async (req: Request, res: Response) => {
+  app.get("/api/teams/:teamId/members", requireAuth, async (req: Request, res: Response) => {
     try {
       const teamId = parseInt(req.params.teamId);
-      const team = await storage.getTeamById(teamId);
       
-      if (!team) {
-        return res.status(404).json({ error: "Team not found" });
+      // Check if user is a member of this team
+      const isMember = await storage.isTeamMember(teamId, req.session.userId!);
+      if (!isMember) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
-      res.json({ team });
+      const members = await storage.getTeamMembers(teamId);
+      
+      // Get user details for each member
+      const membersWithDetails = await Promise.all(
+        members.map(async (member) => {
+          const user = await storage.getUser(member.user_id);
+          return {
+            ...member,
+            user: user ? { 
+              id: user.id, 
+              email: user.email, 
+              full_name: user.full_name,
+              avatar_url: user.avatar_url
+            } : null
+          };
+        })
+      );
+      
+      res.json({ members: membersWithDetails });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/teams/:teamId/members/:userId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const userId = parseInt(req.params.userId);
+      const { role } = req.body;
+      
+      // Check if current user is admin of this team
+      const members = await storage.getTeamMembers(teamId);
+      const currentUserMember = members.find(m => m.user_id === req.session.userId!);
+      
+      if (!currentUserMember || currentUserMember.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const member = await storage.updateTeamMemberRole(teamId, userId, role);
+      if (!member) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+      
+      res.json({ member });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/teams/:teamId/members/:userId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const userId = parseInt(req.params.userId);
+      
+      // Check if current user is admin of this team or removing themselves
+      const members = await storage.getTeamMembers(teamId);
+      const currentUserMember = members.find(m => m.user_id === req.session.userId!);
+      
+      if (!currentUserMember || (currentUserMember.role !== 'admin' && userId !== req.session.userId!)) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+      
+      const success = await storage.removeTeamMember(teamId, userId);
+      if (!success) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+      
+      res.json({ message: "Member removed successfully" });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

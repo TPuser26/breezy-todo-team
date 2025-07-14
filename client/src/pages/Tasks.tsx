@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast'
 import { Plus, Calendar, User, Flag, Trash2, CheckCircle, Clock, Circle } from 'lucide-react'
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal'
+import { TaskPrioritySelector } from '@/components/tasks/TaskPrioritySelector'
 
 export default function Tasks() {
   const [showCreateTask, setShowCreateTask] = useState(false)
@@ -219,7 +220,13 @@ export default function Tasks() {
                       <div className="flex items-center gap-2">
                         {getStatusIcon(task.status)}
                         {getStatusBadge(task.status)}
-                        {getPriorityBadge(task.priority)}
+                        <TaskPrioritySelector 
+                          taskId={task.id} 
+                          currentPriority={task.priority}
+                          onPriorityChange={() => {
+                            queryClient.invalidateQueries({ queryKey: ['/api/tasks'] })
+                          }}
+                        />
                       </div>
                     </div>
                     <Button

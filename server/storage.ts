@@ -16,22 +16,32 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   
   // Task methods
   createTask(task: InsertTask & { created_by: number }): Promise<Task>;
   getTasks(userId: number): Promise<Task[]>;
   getTaskById(id: number): Promise<Task | undefined>;
   updateTaskStatus(id: number, status: string, completedAt?: Date): Promise<Task | undefined>;
+  updateTaskPriority(id: number, priority: string): Promise<Task | undefined>;
+  updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: number): Promise<boolean>;
+  getTeamTasks(teamId: number): Promise<Task[]>;
   
   // Team methods
   createTeam(team: InsertTeam & { created_by: number }): Promise<Team>;
   getUserTeams(userId: number): Promise<Team[]>;
   getTeamById(id: number): Promise<Team | undefined>;
+  updateTeam(id: number, updates: Partial<InsertTeam>): Promise<Team | undefined>;
+  deleteTeam(id: number): Promise<boolean>;
   
   // Team member methods
   addTeamMember(teamId: number, userId: number, role?: string): Promise<TeamMember>;
+  getTeamMembers(teamId: number): Promise<TeamMember[]>;
+  removeTeamMember(teamId: number, userId: number): Promise<boolean>;
+  updateTeamMemberRole(teamId: number, userId: number, role: string): Promise<TeamMember | undefined>;
   getUserTeamCount(userId: number): Promise<number>;
+  isTeamMember(teamId: number, userId: number): Promise<boolean>;
   
   // Stats methods
   getUserCompletedTasksCount(userId: number): Promise<number>;
@@ -133,6 +143,10 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
   // Task methods
   async createTask(task: InsertTask & { created_by: number }): Promise<Task> {
     const id = this.currentTaskId++;
@@ -179,6 +193,38 @@ export class MemStorage implements IStorage {
 
   async deleteTask(id: number): Promise<boolean> {
     return this.tasks.delete(id);
+  }
+
+  async updateTaskPriority(id: number, priority: string): Promise<Task | undefined> {
+    const task = this.tasks.get(id);
+    if (!task) return undefined;
+
+    const updatedTask: Task = {
+      ...task,
+      priority,
+      updated_at: new Date()
+    };
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined> {
+    const task = this.tasks.get(id);
+    if (!task) return undefined;
+
+    const updatedTask: Task = {
+      ...task,
+      ...updates,
+      updated_at: new Date()
+    };
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async getTeamTasks(teamId: number): Promise<Task[]> {
+    return Array.from(this.tasks.values()).filter(
+      (task) => task.team_id === teamId
+    );
   }
 
   // Team methods
@@ -230,6 +276,71 @@ export class MemStorage implements IStorage {
   async getUserTeamCount(userId: number): Promise<number> {
     return Array.from(this.teamMembers.values())
       .filter(member => member.user_id === userId).length;
+  }
+
+  async updateTeam(id: number, updates: Partial<InsertTeam>): Promise<Team | undefined> {
+    const team = this.teams.get(id);
+    if (!team) return undefined;
+
+    const updatedTeam: Team = {
+      ...team,
+      ...updates,
+      updated_at: new Date()
+    };
+    this.teams.set(id, updatedTeam);
+    return updatedTeam;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    // Remove all team members first
+    const teamMembers = Array.from(this.teamMembers.values())
+      .filter(member => member.team_id === id);
+    
+    teamMembers.forEach(member => this.teamMembers.delete(member.id));
+    
+    // Remove team tasks
+    const teamTasks = Array.from(this.tasks.values())
+      .filter(task => task.team_id === id);
+    
+    teamTasks.forEach(task => this.tasks.delete(task.id));
+    
+    // Remove team
+    return this.teams.delete(id);
+  }
+
+  async getTeamMembers(teamId: number): Promise<TeamMember[]> {
+    return Array.from(this.teamMembers.values()).filter(
+      (member) => member.team_id === teamId
+    );
+  }
+
+  async removeTeamMember(teamId: number, userId: number): Promise<boolean> {
+    const member = Array.from(this.teamMembers.values())
+      .find(m => m.team_id === teamId && m.user_id === userId);
+    
+    if (!member) return false;
+    
+    return this.teamMembers.delete(member.id);
+  }
+
+  async updateTeamMemberRole(teamId: number, userId: number, role: string): Promise<TeamMember | undefined> {
+    const member = Array.from(this.teamMembers.values())
+      .find(m => m.team_id === teamId && m.user_id === userId);
+    
+    if (!member) return undefined;
+
+    const updatedMember: TeamMember = {
+      ...member,
+      role
+    };
+    
+    this.teamMembers.set(member.id, updatedMember);
+    return updatedMember;
+  }
+
+  async isTeamMember(teamId: number, userId: number): Promise<boolean> {
+    return Array.from(this.teamMembers.values())
+      .some(member => member.team_id === teamId && member.user_id === userId);
   }
 
   // Stats methods

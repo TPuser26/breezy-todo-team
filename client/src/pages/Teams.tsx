@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { Plus, Users, Calendar, UserPlus, Settings, Crown, User } from 'lucide-react'
+import { TeamDetailsModal } from '@/components/teams/TeamDetailsModal'
 
 interface Team {
   id: number
@@ -203,9 +204,11 @@ export default function Teams() {
                         </Badge>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm">
-                      <Settings className="w-4 h-4" />
-                    </Button>
+                    <TeamDetailsModal teamId={team.id} teamName={team.name}>
+                      <Button variant="ghost" size="sm">
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                    </TeamDetailsModal>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
