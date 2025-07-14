@@ -73,7 +73,7 @@ export class MemStorage implements IStorage {
   private currentTeamId: number;
   private currentTeamMemberId: number;
   private currentNotificationId: number;
-  private currentCommentId: number = 1;
+  private currentCommentId: number;
 
   constructor() {
     this.users = new Map();
@@ -86,6 +86,7 @@ export class MemStorage implements IStorage {
     this.currentTeamId = 1;
     this.currentTeamMemberId = 1;
     this.currentNotificationId = 1;
+    this.currentCommentId = 1;
     
     // Create a test user for debugging
     this.createTestUser();
