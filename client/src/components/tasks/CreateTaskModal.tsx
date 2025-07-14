@@ -18,8 +18,8 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('medium')
   const [status, setStatus] = useState('todo')
-  const [assignedTo, setAssignedTo] = useState('')
-  const [teamId, setTeamId] = useState('')
+  const [assignedTo, setAssignedTo] = useState('none')
+  const [teamId, setTeamId] = useState('none')
   
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -92,8 +92,8 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
     setDescription('')
     setPriority('medium')
     setStatus('todo')
-    setAssignedTo('')
-    setTeamId('')
+    setAssignedTo('none')
+    setTeamId('none')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -112,8 +112,8 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
       description: description.trim() || null,
       priority,
       status,
-      assigned_to: assignedTo ? parseInt(assignedTo) : null,
-      team_id: teamId ? parseInt(teamId) : null,
+      assigned_to: assignedTo && assignedTo !== 'none' ? parseInt(assignedTo) : null,
+      team_id: teamId && teamId !== 'none' ? parseInt(teamId) : null,
     })
   }
 
@@ -184,7 +184,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                   <SelectValue placeholder="Sélectionner un utilisateur" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun utilisateur</SelectItem>
+                  <SelectItem value="none">Aucun utilisateur</SelectItem>
                   {usersData?.users?.map((user: any) => (
                     <SelectItem key={user.id} value={user.id.toString()}>
                       {user.full_name || user.email}
@@ -201,7 +201,7 @@ export function CreateTaskModal({ open, onOpenChange }: CreateTaskModalProps) {
                   <SelectValue placeholder="Sélectionner une équipe" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune équipe</SelectItem>
+                  <SelectItem value="none">Aucune équipe</SelectItem>
                   {teamsData?.teams?.map((team: any) => (
                     <SelectItem key={team.id} value={team.id.toString()}>
                       {team.name}
