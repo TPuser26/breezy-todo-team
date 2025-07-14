@@ -60,6 +60,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   password: true,
   full_name: true,
+}).extend({
+  password: z.string().min(3, "Le mot de passe doit contenir au moins 3 caractères"),
 });
 
 export const insertTeamSchema = createInsertSchema(teams).pick({
@@ -83,8 +85,8 @@ export const updateUserSchema = createInsertSchema(users).pick({
 }).partial();
 
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().email("Adresse email invalide"),
+  password: z.string().min(3, "Le mot de passe doit contenir au moins 3 caractères"),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

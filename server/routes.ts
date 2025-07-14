@@ -23,12 +23,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register endpoint
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { email, password, full_name } = insertUserSchema.parse(req.body);
+      console.log("Registration attempt:", { email: req.body?.email, hasPassword: !!req.body?.password });
+      
+      const validationResult = insertUserSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        console.log("Registration validation failed:", validationResult.error.errors);
+        const firstError = validationResult.error.errors[0];
+        return res.status(400).json({ 
+          error: firstError.message || "Données invalides",
+          details: validationResult.error.errors 
+        });
+      }
+      
+      const { email, password, full_name } = validationResult.data;
       
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ error: "User already exists" });
+        return res.status(400).json({ error: "Un utilisateur avec cet email existe déjà" });
       }
 
       // Hash password
@@ -44,11 +56,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Set session
       req.session.userId = user.id;
       
+      console.log("Registration successful for user:", email);
+      
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
     } catch (error) {
-      res.status(400).json({ error: "Invalid input" });
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Erreur interne du serveur" });
     }
   });
 
@@ -60,8 +75,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validationResult = loginSchema.safeParse(req.body);
       if (!validationResult.success) {
         console.log("Validation failed:", validationResult.error.errors);
+        const firstError = validationResult.error.errors[0];
         return res.status(400).json({ 
-          error: "Invalid input", 
+          error: firstError.message || "Données invalides",
           details: validationResult.error.errors 
         });
       }
