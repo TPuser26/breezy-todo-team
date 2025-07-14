@@ -66,6 +66,20 @@ export function TeamDetailsModal({ teamId, teamName, children }: TeamDetailsModa
     enabled: isOpen,
   })
 
+  const { data: teamTasksData } = useQuery({
+    queryKey: ['/api/teams', teamId, 'tasks'],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks?team_id=${teamId}`, {
+        credentials: 'include',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to fetch team tasks')
+      }
+      return response.json()
+    },
+    enabled: isOpen,
+  })
+
   const updateTeamMutation = useMutation({
     mutationFn: async (updates: { name?: string; description?: string }) => {
       const response = await fetch(`/api/teams/${teamId}`, {
@@ -301,6 +315,64 @@ export function TeamDetailsModal({ teamId, teamName, children }: TeamDetailsModa
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Team Tasks */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span>Tâches de l'équipe</span>
+                <Badge variant="outline">{teamTasksData?.tasks?.length || 0}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {teamTasksData?.tasks?.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Aucune tâche assignée à cette équipe
+                  </div>
+                ) : (
+                  teamTasksData?.tasks?.map((task: any) => (
+                    <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium">{task.title}</div>
+                        {task.description && (
+                          <div className="text-sm text-gray-500 mt-1">{task.description}</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={task.status === 'completed' ? 'default' : 'secondary'}
+                          className={
+                            task.status === 'completed' 
+                              ? 'bg-green-100 text-green-800' 
+                              : task.status === 'in_progress' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-gray-100 text-gray-800'
+                          }
+                        >
+                          {task.status === 'completed' ? 'Terminée' : 
+                           task.status === 'in_progress' ? 'En cours' : 'À faire'}
+                        </Badge>
+                        <Badge 
+                          variant="outline"
+                          className={
+                            task.priority === 'high' 
+                              ? 'bg-red-100 text-red-800' 
+                              : task.priority === 'medium' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : 'bg-gray-100 text-gray-800'
+                          }
+                        >
+                          {task.priority === 'high' ? 'Élevée' : 
+                           task.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

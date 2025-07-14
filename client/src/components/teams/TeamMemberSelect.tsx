@@ -99,6 +99,15 @@ export function TeamMemberSelect({ teamId, onMemberAdded }: TeamMemberSelectProp
   const memberUserIds = members.map((member: any) => member.user_id)
   const availableUsers = users.filter((user: User) => !memberUserIds.includes(user.id))
 
+  console.log('TeamMemberSelect Debug:', {
+    users,
+    members,
+    memberUserIds,
+    availableUsers,
+    usersData,
+    membersData
+  })
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -122,19 +131,25 @@ export function TeamMemberSelect({ teamId, onMemberAdded }: TeamMemberSelectProp
                 <SelectValue placeholder="Choisir un utilisateur" />
               </SelectTrigger>
               <SelectContent>
-                {availableUsers.map((user: User) => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {user.full_name ? user.full_name[0].toUpperCase() : user.email[0].toUpperCase()}
+                {availableUsers.length === 0 ? (
+                  <div className="p-2 text-sm text-gray-500 text-center">
+                    Aucun utilisateur disponible
+                  </div>
+                ) : (
+                  availableUsers.map((user: User) => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                          {user.full_name ? user.full_name[0].toUpperCase() : user.email[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium">{user.full_name || user.email}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium">{user.full_name || user.email}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

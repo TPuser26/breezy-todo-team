@@ -215,8 +215,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/tasks", requireAuth, async (req: Request, res: Response) => {
     try {
-      const tasks = await storage.getTasks(req.session.userId!);
-      res.json({ tasks });
+      const { team_id } = req.query;
+      
+      if (team_id) {
+        // Get team tasks
+        const teamId = parseInt(team_id as string);
+        const tasks = await storage.getTeamTasks(teamId);
+        res.json({ tasks });
+      } else {
+        // Get user tasks
+        const tasks = await storage.getTasks(req.session.userId!);
+        res.json({ tasks });
+      }
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
