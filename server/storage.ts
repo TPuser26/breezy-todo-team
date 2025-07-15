@@ -1,5 +1,5 @@
 import { 
-  users, teams, tasks, teamMembers, notifications,
+  users, teams, tasks, teamMembers, notifications, comments,
   type User, type InsertUser, type UpdateUser,
   type Team, type InsertTeam,
   type Task, type InsertTask,
@@ -7,6 +7,9 @@ import {
   type Notification, type InsertNotification,
   type Comment, type InsertComment
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, count, sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -443,4 +446,328 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        password: hashedPassword,
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: number, updates: UpdateUser): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...updates,
+        updated_at: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  // Task methods
+  async createTask(task: InsertTask & { created_by: number }): Promise<Task> {
+    const [newTask] = await db
+      .insert(tasks)
+      .values(task)
+      .returning();
+    return newTask;
+  }
+
+  async getTasks(userId: number): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.created_by, userId));
+  }
+
+  async getTaskById(id: number): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task || undefined;
+  }
+
+  async updateTaskStatus(id: number, status: string, completedAt?: Date): Promise<Task | undefined> {
+    const [task] = await db
+      .update(tasks)
+      .set({
+        status,
+        completed_at: completedAt || null,
+        updated_at: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return task || undefined;
+  }
+
+  async updateTaskPriority(id: number, priority: string): Promise<Task | undefined> {
+    const [task] = await db
+      .update(tasks)
+      .set({
+        priority,
+        updated_at: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return task || undefined;
+  }
+
+  async updateTask(id: number, updates: Partial<InsertTask>): Promise<Task | undefined> {
+    const [task] = await db
+      .update(tasks)
+      .set({
+        ...updates,
+        updated_at: new Date(),
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return task || undefined;
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+    const result = await db.delete(tasks).where(eq(tasks.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getTeamTasks(teamId: number): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.team_id, teamId));
+  }
+
+  // Team methods
+  async createTeam(team: InsertTeam & { created_by: number }): Promise<Team> {
+    const [newTeam] = await db
+      .insert(teams)
+      .values(team)
+      .returning();
+    
+    // Add the creator as an admin member
+    await db.insert(teamMembers).values({
+      team_id: newTeam.id,
+      user_id: team.created_by,
+      role: "admin",
+    });
+    
+    return newTeam;
+  }
+
+  async getUserTeams(userId: number): Promise<Team[]> {
+    return await db
+      .select({
+        id: teams.id,
+        name: teams.name,
+        description: teams.description,
+        created_by: teams.created_by,
+        created_at: teams.created_at,
+        updated_at: teams.updated_at,
+      })
+      .from(teams)
+      .innerJoin(teamMembers, eq(teams.id, teamMembers.team_id))
+      .where(eq(teamMembers.user_id, userId));
+  }
+
+  async getTeamById(id: number): Promise<Team | undefined> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, id));
+    return team || undefined;
+  }
+
+  async updateTeam(id: number, updates: Partial<InsertTeam>): Promise<Team | undefined> {
+    const [team] = await db
+      .update(teams)
+      .set({
+        ...updates,
+        updated_at: new Date(),
+      })
+      .where(eq(teams.id, id))
+      .returning();
+    return team || undefined;
+  }
+
+  async deleteTeam(id: number): Promise<boolean> {
+    const result = await db.delete(teams).where(eq(teams.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Team member methods
+  async addTeamMember(teamId: number, userId: number, role: string = 'member'): Promise<TeamMember> {
+    const [member] = await db
+      .insert(teamMembers)
+      .values({
+        team_id: teamId,
+        user_id: userId,
+        role,
+      })
+      .returning();
+    return member;
+  }
+
+  async getTeamMembers(teamId: number): Promise<TeamMember[]> {
+    return await db
+      .select({
+        id: teamMembers.id,
+        team_id: teamMembers.team_id,
+        user_id: teamMembers.user_id,
+        role: teamMembers.role,
+        joined_at: teamMembers.joined_at,
+        user: {
+          id: users.id,
+          email: users.email,
+          full_name: users.full_name,
+          avatar_url: users.avatar_url,
+        },
+      })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.user_id, users.id))
+      .where(eq(teamMembers.team_id, teamId));
+  }
+
+  async removeTeamMember(teamId: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(teamMembers)
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.user_id, userId)));
+    return result.rowCount > 0;
+  }
+
+  async updateTeamMemberRole(teamId: number, userId: number, role: string): Promise<TeamMember | undefined> {
+    const [member] = await db
+      .update(teamMembers)
+      .set({ role })
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.user_id, userId)))
+      .returning();
+    return member || undefined;
+  }
+
+  async getUserTeamCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(teamMembers)
+      .where(eq(teamMembers.user_id, userId));
+    return result[0]?.count || 0;
+  }
+
+  async isTeamMember(teamId: number, userId: number): Promise<boolean> {
+    const [member] = await db
+      .select()
+      .from(teamMembers)
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.user_id, userId)));
+    return !!member;
+  }
+
+  // Stats methods
+  async getUserCompletedTasksCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(tasks)
+      .where(and(eq(tasks.created_by, userId), eq(tasks.status, 'completed')));
+    return result[0]?.count || 0;
+  }
+
+  async getUserActiveTasksCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(tasks)
+      .where(and(eq(tasks.created_by, userId), sql`${tasks.status} != 'completed'`));
+    return result[0]?.count || 0;
+  }
+
+  // Notification methods
+  async createNotification(notification: InsertNotification & { user_id: number }): Promise<Notification> {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+
+  async getUserNotifications(userId: number, limit: number = 20): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.user_id, userId))
+      .orderBy(desc(notifications.created_at))
+      .limit(limit);
+  }
+
+  async markNotificationAsRead(id: number): Promise<boolean> {
+    const result = await db
+      .update(notifications)
+      .set({ is_read: true })
+      .where(eq(notifications.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const result = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(eq(notifications.user_id, userId), eq(notifications.is_read, false)));
+    return result[0]?.count || 0;
+  }
+
+  async deleteNotification(id: number): Promise<boolean> {
+    const result = await db.delete(notifications).where(eq(notifications.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Comment methods
+  async createComment(comment: InsertComment & { user_id: number }): Promise<Comment> {
+    const [newComment] = await db
+      .insert(comments)
+      .values(comment)
+      .returning();
+    return newComment;
+  }
+
+  async getCommentsForTask(taskId: number): Promise<Comment[]> {
+    return await db
+      .select({
+        id: comments.id,
+        content: comments.content,
+        task_id: comments.task_id,
+        user_id: comments.user_id,
+        created_at: comments.created_at,
+        updated_at: comments.updated_at,
+        user: {
+          id: users.id,
+          email: users.email,
+          full_name: users.full_name,
+          avatar_url: users.avatar_url,
+        },
+      })
+      .from(comments)
+      .innerJoin(users, eq(comments.user_id, users.id))
+      .where(eq(comments.task_id, taskId))
+      .orderBy(desc(comments.created_at));
+  }
+
+  async deleteComment(commentId: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(comments)
+      .where(and(eq(comments.id, commentId), eq(comments.user_id, userId)));
+    return result.rowCount > 0;
+  }
+}
+
+export const storage = new DatabaseStorage();

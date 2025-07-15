@@ -98,3 +98,4 @@ Preferred communication style: Simple, everyday language.
 
 Changelog:
 - July 07, 2025. Initial setup
+- July 15, 2025. Migrated from MemStorage to DatabaseStorage for persistent data with PostgreSQL database integration
