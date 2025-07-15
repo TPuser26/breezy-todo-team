@@ -564,6 +564,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to view database contents
+  app.get("/api/debug/tables", async (req: Request, res: Response) => {
+    try {
+      const users = await storage.getAllUsers();
+      const teams = await storage.getUserTeams(1); // Get teams for user 1 as example
+      const tasks = await storage.getTasks(1); // Get tasks for user 1 as example
+      
+      // Remove passwords from users for security
+      const safeUsers = users.map(({ password, ...user }) => user);
+      
+      const debugData = {
+        users: safeUsers,
+        teams,
+        tasks,
+        userCount: users.length,
+        teamCount: teams.length,
+        taskCount: tasks.length
+      };
+      
+      res.json(debugData);
+    } catch (error) {
+      console.error("Debug endpoint error:", error);
+      res.status(500).json({ error: "Failed to fetch debug data" });
+    }
+  });
+
   // Comments routes
   app.get("/api/tasks/:taskId/comments", requireAuth, async (req: Request, res: Response) => {
     try {
