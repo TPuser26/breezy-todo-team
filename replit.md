@@ -83,6 +83,13 @@ This is a full-stack web application built with Express.js backend and React fro
 - **Backend**: esbuild bundle executed with Node.js
 - **Database**: Production PostgreSQL connection
 - **Environment**: NODE_ENV=production
+- **Session Storage**: PostgreSQL-based session store for persistence across deployments
+
+### Required Environment Variables for Production Deployment
+- `DATABASE_URL`: PostgreSQL connection string
+- `SESSION_SECRET`: Random secret key for session security (minimum 32 characters)
+- `NODE_ENV`: Set to "production"
+- `REPLIT_DEPLOYMENT`: Set to "true" when deploying on Replit to handle cookie security properly
 
 ### Build Process
 1. Frontend assets built with Vite
@@ -99,3 +106,4 @@ Preferred communication style: Simple, everyday language.
 Changelog:
 - July 07, 2025. Initial setup
 - July 15, 2025. Migrated from MemStorage to DatabaseStorage for persistent data with PostgreSQL database integration
+- July 15, 2025. Fixed session persistence issues by implementing PostgreSQL session store for production deployments
