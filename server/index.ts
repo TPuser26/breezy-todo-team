@@ -12,6 +12,22 @@ app.use(express.urlencoded({ extended: false }));
 // Session configuration with PostgreSQL store
 const PgSession = connectPgSimple(session);
 
+// Configuration for different deployment environments
+const isProduction = process.env.NODE_ENV === 'production';
+const isReplit = process.env.REPLIT_DEPLOYMENT === 'true';
+const isRender = process.env.RENDER === 'true';
+
+// Debug session configuration
+console.log('Session Configuration:', {
+  NODE_ENV: process.env.NODE_ENV,
+  REPLIT_DEPLOYMENT: process.env.REPLIT_DEPLOYMENT,
+  RENDER: process.env.RENDER,
+  isProduction,
+  isReplit,
+  isRender
+});
+
+// Configure session for production deployments
 app.use(session({
   store: new PgSession({
     pool: pool,
@@ -21,11 +37,13 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
+  name: 'connect.sid',
   cookie: {
-    secure: process.env.NODE_ENV === 'production' && process.env.REPLIT_DEPLOYMENT !== 'true',
+    secure: isProduction && !isReplit, // Only secure on HTTPS production (not Replit)
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin production
+    domain: isProduction ? undefined : undefined // Let browser handle domain
   }
 }));
 
